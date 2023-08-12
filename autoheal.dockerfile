@@ -1,4 +1,4 @@
-FROM alpine:3.13.5
+FROM alpine:latest
 
 RUN apk add --no-cache curl jq
 
@@ -9,6 +9,7 @@ ENV AUTOHEAL_CONTAINER_LABEL=autoheal \
     AUTOHEAL_START_PERIOD=0 \
     AUTOHEAL_INTERVAL=5 \
     AUTOHEAL_DEFAULT_STOP_TIMEOUT=10 \
+    AUTOHEAL_MONITOR_RUNNING=false \
     DOCKER_SOCK=/var/run/docker.sock \
     CURL_TIMEOUT=30 \
     WEBHOOK_URL=""
