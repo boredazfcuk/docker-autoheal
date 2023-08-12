@@ -27,6 +27,12 @@ AUTOHEAL_INTERVAL=${AUTOHEAL_INTERVAL:-5}
 AUTOHEAL_DEFAULT_STOP_TIMEOUT=${AUTOHEAL_DEFAULT_STOP_TIMEOUT:-10}
 AUTOHEAL_ONLY_MONITOR_RUNNING=${AUTOHEAL_ONLY_MONITOR_RUNNING:-false}
 
+echo AUTOHEAL_CONTAINER_LABEL=${AUTOHEAL_CONTAINER_LABEL}
+echo AUTOHEAL_START_PERIOD=${AUTOHEAL_START_PERIOD}
+echo AUTOHEAL_INTERVAL=${AUTOHEAL_INTERVAL}
+echo AUTOHEAL_DEFAULT_STOP_TIMEOUT=${AUTOHEAL_DEFAULT_STOP_TIMEOUT}
+echo AUTOHEAL_ONLY_MONITOR_RUNNING=${AUTOHEAL_ONLY_MONITOR_RUNNING}
+
 docker_curl() {
   curl --max-time "${CURL_TIMEOUT}" --no-buffer -s \
   ${CA} ${CLIENT_KEY} ${CLIENT_CERT} \
@@ -36,8 +42,9 @@ docker_curl() {
 
 # shellcheck disable=2039
 get_container_info() {
-  local label_filter
   local url
+  local label_filter
+  local running_filter
 
   # Set container selector
   if [ "$AUTOHEAL_CONTAINER_LABEL" = "all" ]
@@ -46,11 +53,11 @@ get_container_info() {
   else
     label_filter=",\"label\":\[\"${AUTOHEAL_CONTAINER_LABEL}=true\"\]"
   fi
-  if [ "${AUTOHEAL_ONLY_MONITOR_RUNNING}" = false ]
+  if [ "$AUTOHEAL_ONLY_MONITOR_RUNNING" = false ]
   then
     running_filter=""
   else
-    running_filter=",\"state\":\[\"running\"\]"
+    running_filter=",\"status\":\[\"running\"\]"
   fi
   url="${HTTP_ENDPOINT}/containers/json?filters=\{\"health\":\[\"unhealthy\"\]${label_filter}${running_filter}\}"
   docker_curl "$url"
@@ -103,6 +110,9 @@ if [ "$1" = "autoheal" ] && [ -e "$DOCKER_SOCK" ];then
   while true
   do
     STOP_TIMEOUT=".Labels[\"autoheal.stop.timeout\"] // $AUTOHEAL_DEFAULT_STOP_TIMEOUT"
+
+echo INFO: $(get_container_info)
+
     get_container_info | \
       jq -r "foreach .[] as \$CONTAINER([];[]; \$CONTAINER | .Id, .Names[0], .State, ${STOP_TIMEOUT})" | \
       while read -r CONTAINER_ID && read -r CONTAINER_NAME && read -r CONTAINER_STATE && read -r TIMEOUT
